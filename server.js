@@ -15,7 +15,10 @@ async function main() {
 
     // set port to listen on
     const port = 3000;
-    
+
+    // default redis record expiration (seconds)
+    const redisExpire = 60 * 5;
+
     // instantiate redis client
     const client = createClient({ url: process.env.REDIS_URL });
 
@@ -42,7 +45,7 @@ async function main() {
         let valStr = JSON.stringify(value);
         
         // save key/value pair to redis
-        const saveRes = await client.set(id, valStr, { EX: 30 });
+        const saveRes = await client.set(id, valStr, { EX: redisExpire });
 
         res.setHeader("location", "/widgets/" + id);
         res.status(201).json();
@@ -87,8 +90,19 @@ async function main() {
     });
 
     // Get All Widgets
-    app.get('/widgets', (req, res) => {
-      res.send('Hello World!');
+    app.get('/widgets', async (req, res) => {
+      try {
+        const widgets = [];
+        const keys = await client.keys("*");
+        for (const key of keys) {
+          const valStr = await client.get(key);
+          const val = JSON.parse(valStr);
+          widgets.push(val);
+        }
+        res.json(widgets);
+      } catch (err) {
+        res.status(500).json({ error: err.message });
+      }
     });
 
     // Listen for connections on port
