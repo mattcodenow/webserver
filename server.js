@@ -35,7 +35,7 @@ async function main() {
     app.post('/widgets', async (req, res) => {
       try {
         // get values from request body
-        let value = req.body.value; // object
+        let value = req.body.value;
 
         // add a unique id to the record
         const id = uuid.v4();
@@ -45,7 +45,7 @@ async function main() {
         let valStr = JSON.stringify(value);
         
         // save key/value pair to redis
-        const saveRes = await client.set(id, valStr, { EX: redisExpire });
+        await client.set(id, valStr, { EX: redisExpire });
 
         res.setHeader("location", "/widgets/" + id);
         res.status(201).json();
@@ -62,7 +62,6 @@ async function main() {
         
         // retrieve record by id
         const val = await client.get(id);
-        console.log("returned from redis: ", val);
 
         if(!val) {
           // if no value is returned
@@ -80,13 +79,42 @@ async function main() {
     });
 
     // Update Widget By ID
-    app.put('/widgets/:widgetId', (req, res) => {
-      res.send('Hello World!');
+    app.put('/widgets/:widgetId', async (req, res) => {
+      try {
+        // get values from request body
+        let value = req.body.value;
+
+        // get id from path
+        const id = req.params.widgetId;
+
+        // stringify value
+        let valStr = JSON.stringify(value);
+
+        // save key/value pair to redis
+        await client.set(id, valStr, { EX: redisExpire });
+
+        res.setHeader("location", "/widgets/" + id);
+        res.status(200).json(value);
+      } catch (err) {
+        res.status(500).json({ error: err.message });
+      }
     });
 
     // Delete Widget By ID
-    app.delete('/widgets/:widgetId', (req, res) => {
-      res.send('Hello World!');
+    app.delete('/widgets/:widgetId', async (req, res) => {
+      try {
+        // get id from path
+        const id = req.params.widgetId;
+
+        // delete record by id from redis
+        await client.del(id);
+
+        // respond success with 204
+        res.status(204).json();
+      } catch (err) {
+        // respond failure with 500
+        res.status(500).json({ error: err.message });
+      }
     });
 
     // Get All Widgets
